@@ -2,7 +2,6 @@
 import os
 import sys
 import datetime
-import mysql.connector
 import urllib.parse
 import psycopg2
 import configparser

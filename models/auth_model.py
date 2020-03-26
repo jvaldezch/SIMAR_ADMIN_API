@@ -1,6 +1,5 @@
 # -*- coding: utf-8 -*-
 import datetime
-import mysql.connector
 import urllib.parse
 import psycopg2
 import bcrypt
@@ -50,110 +49,110 @@ class AuthModel:
             self.db.rollback()
             raise Exception(err)
 
-    def update_user_password(self, id_user, n_password):
-        try:            
-            cur = self.db.connection.cursor()
-            cur.execute(
-                "UPDATE users SET `password` = '%s' WHERE id = %s;" % (n_password, id_user))
-            self.db.connection.commit()
-            cur.close()
-            return True
-        except mysql.connector.Error as err:
-            raise Exception(err.message)
+    # def update_user_password(self, id_user, n_password):
+    #     try:            
+    #         cur = self.db.connection.cursor()
+    #         cur.execute(
+    #             "UPDATE users SET `password` = '%s' WHERE id = %s;" % (n_password, id_user))
+    #         self.db.connection.commit()
+    #         cur.close()
+    #         return True
+    #     except mysql.connector.Error as err:
+    #         raise Exception(err.message)
 
 
-    def challenge_email(self, username):
-        try:
-            cur = self.db.connection.cursor()
-            sql = "SELECT * FROM users WHERE email = '%s';" % username
-            results = cur.execute(sql)
-            if results > 0:
-                row = cur.fetchone()
-                return row
-            else:
-                return None
-        except mysql.connector.Error as err:
-            raise Exception(err.message)
+    # def challenge_email(self, username):
+    #     try:
+    #         cur = self.db.connection.cursor()
+    #         sql = "SELECT * FROM users WHERE email = '%s';" % username
+    #         results = cur.execute(sql)
+    #         if results > 0:
+    #             row = cur.fetchone()
+    #             return row
+    #         else:
+    #             return None
+    #     except mysql.connector.Error as err:
+    #         raise Exception(err.message)
 
-    def add_token(self, id_user, token):
-        try:
-            cur = self.db.cursor(cursor_factory=RealDictCursor)
-            query = """INSERT INTO systems_users_tokens(id_user, token, process) VALUES (%s, '%s', '%s');""" % (id_user, token, 'login')
-            cur.execute(query)
-            self.db.commit()            
-        except psycopg2.Error as err:
-            self.db.rollback()
-            raise Exception(err)
+    # def add_token(self, id_user, token):
+    #     try:
+    #         cur = self.db.cursor(cursor_factory=RealDictCursor)
+    #         query = """INSERT INTO systems_users_tokens(id_user, token, process) VALUES (%s, '%s', '%s');""" % (id_user, token, 'login')
+    #         cur.execute(query)
+    #         self.db.commit()            
+    #     except psycopg2.Error as err:
+    #         self.db.rollback()
+    #         raise Exception(err)
 
-    def add_recover_token(self, id_user, token):
-        try:
-            cur = self.db.connection.cursor()
-            cur.execute(
-                "INSERT INTO tokens(id_user, token, `type`) VALUES (%s, %s, %s);", (id_user, token, 'recovery'))
-            self.db.connection.commit()
-            cur.close()
-            return True
-        except mysql.connector.Error as err:
-            raise Exception(err.message)
+    # def add_recover_token(self, id_user, token):
+    #     try:
+    #         cur = self.db.connection.cursor()
+    #         cur.execute(
+    #             "INSERT INTO tokens(id_user, token, `type`) VALUES (%s, %s, %s);", (id_user, token, 'recovery'))
+    #         self.db.connection.commit()
+    #         cur.close()
+    #         return True
+    #     except mysql.connector.Error as err:
+    #         raise Exception(err.message)
 
-    def delete_token(self, id_user):
-        try:
-            cur = self.db.cursor(cursor_factory=RealDictCursor)
-            query = """DELETE FROM systems_users_tokens AS t WHERE t.id_user = '%s';""" % id_user
-            cur.execute(query)
-            self.db.commit()
-        except psycopg2.Error as err:
-            self.db.rollback()
-            raise Exception(err)
+    # def delete_token(self, id_user):
+    #     try:
+    #         cur = self.db.cursor(cursor_factory=RealDictCursor)
+    #         query = """DELETE FROM systems_users_tokens AS t WHERE t.id_user = '%s';""" % id_user
+    #         cur.execute(query)
+    #         self.db.commit()
+    #     except psycopg2.Error as err:
+    #         self.db.rollback()
+    #         raise Exception(err)
 
-    def delete_recover_token(self, id_user):
-        try:
-            cur = self.db.connection.cursor()
-            cur.execute(
-                "DELETE FROM tokens WHERE id_user = %s AND `type`  = 'recovery';" % id_user)
-            self.db.connection.commit()
-            cur.close()
-        except mysql.connector.Error as err:
-            raise Exception(err.message)
+    # def delete_recover_token(self, id_user):
+    #     try:
+    #         cur = self.db.connection.cursor()
+    #         cur.execute(
+    #             "DELETE FROM tokens WHERE id_user = %s AND `type`  = 'recovery';" % id_user)
+    #         self.db.connection.commit()
+    #         cur.close()
+    #     except mysql.connector.Error as err:
+    #         raise Exception(err.message)
 
-    def check_recover_token(self, token):
-        try:
-            cur = self.db.connection.cursor()
-            sql = "SELECT id, id_user FROM tokens WHERE token = '%s' AND `type`  = 'recovery' AND `updated_at` IS NULL;" % token
-            results = cur.execute(sql)
-            if results > 0:
-                row = cur.fetchone()
-                cur.close()
-                return row
-            else:
-                cur.close()
-                return None
-        except mysql.connector.Error as err:
-            raise Exception(err.message)
+    # def check_recover_token(self, token):
+    #     try:
+    #         cur = self.db.connection.cursor()
+    #         sql = "SELECT id, id_user FROM tokens WHERE token = '%s' AND `type`  = 'recovery' AND `updated_at` IS NULL;" % token
+    #         results = cur.execute(sql)
+    #         if results > 0:
+    #             row = cur.fetchone()
+    #             cur.close()
+    #             return row
+    #         else:
+    #             cur.close()
+    #             return None
+    #     except mysql.connector.Error as err:
+    #         raise Exception(err.message)
 
-    def update_token(self, id_token):
-        try:
-            cur = self.db.connection.cursor()
-            cur.execute(
-                "UPDATE tokens SET `updated_at` = '%s' WHERE id = %s;" % (datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"), id_token))
-            self.db.connection.commit()
-            cur.close()
-        except mysql.connector.Error as err:
-            raise Exception(err.message)
+    # def update_token(self, id_token):
+    #     try:
+    #         cur = self.db.connection.cursor()
+    #         cur.execute(
+    #             "UPDATE tokens SET `updated_at` = '%s' WHERE id = %s;" % (datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"), id_token))
+    #         self.db.connection.commit()
+    #         cur.close()
+    #     except mysql.connector.Error as err:
+    #         raise Exception(err.message)
 
-    def get_user_roles(self, id_user):
-        try:
-            cur = self.db.connection.cursor()
-            results = cur.execute(
-                "SELECT role FROM user_roles WHERE id_user = %s;" % id_user)
-            if results > 0:
-                rows = cur.fetchall()
-                cur.close()
-                return rows
-            cur.close()
-            return False
-        except mysql.connector.Error as err:
-            raise Exception(err.message)
+    # def get_user_roles(self, id_user):
+    #     try:
+    #         cur = self.db.connection.cursor()
+    #         results = cur.execute(
+    #             "SELECT role FROM user_roles WHERE id_user = %s;" % id_user)
+    #         if results > 0:
+    #             rows = cur.fetchall()
+    #             cur.close()
+    #             return rows
+    #         cur.close()
+    #         return False
+    #     except mysql.connector.Error as err:
+    #         raise Exception(err.message)
 
 
 class Login(Resource):

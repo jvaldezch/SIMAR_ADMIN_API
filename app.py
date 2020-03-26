@@ -60,6 +60,7 @@ try:
     vtiles_url = config.get('env', 'vtiles_url')
     vitles_cache = config.get('env', 'vitles_cache')
     download_uri = config.get('env', 'download_uri')
+    l_port = config.get('env', 'port')
 
 except Exception as err:
     print(str(err), ' could not connect to db')
@@ -159,4 +160,4 @@ api.add_resource(pgs.PGRowSaveMetadata, '/api/guardar-metadata-pagina')
 
 if __name__ == '__main__':
     app.secret_key = secret_key
-    app.run(debug=True, port=5004)
+    app.run(debug=True, port=l_port)

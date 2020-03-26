@@ -74,15 +74,15 @@ class AuthModel:
     #     except mysql.connector.Error as err:
     #         raise Exception(err.message)
 
-    # def add_token(self, id_user, token):
-    #     try:
-    #         cur = self.db.cursor(cursor_factory=RealDictCursor)
-    #         query = """INSERT INTO systems_users_tokens(id_user, token, process) VALUES (%s, '%s', '%s');""" % (id_user, token, 'login')
-    #         cur.execute(query)
-    #         self.db.commit()            
-    #     except psycopg2.Error as err:
-    #         self.db.rollback()
-    #         raise Exception(err)
+    def add_token(self, id_user, token):
+        try:
+            cur = self.db.cursor(cursor_factory=RealDictCursor)
+            query = """INSERT INTO systems_users_tokens(id_user, token, process) VALUES (%s, '%s', '%s');""" % (id_user, token, 'login')
+            cur.execute(query)
+            self.db.commit()            
+        except psycopg2.Error as err:
+            self.db.rollback()
+            raise Exception(err)
 
     # def add_recover_token(self, id_user, token):
     #     try:

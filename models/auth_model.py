@@ -95,15 +95,15 @@ class AuthModel:
     #     except mysql.connector.Error as err:
     #         raise Exception(err.message)
 
-    # def delete_token(self, id_user):
-    #     try:
-    #         cur = self.db.cursor(cursor_factory=RealDictCursor)
-    #         query = """DELETE FROM systems_users_tokens AS t WHERE t.id_user = '%s';""" % id_user
-    #         cur.execute(query)
-    #         self.db.commit()
-    #     except psycopg2.Error as err:
-    #         self.db.rollback()
-    #         raise Exception(err)
+    def delete_token(self, id_user):
+        try:
+            cur = self.db.cursor(cursor_factory=RealDictCursor)
+            query = """DELETE FROM systems_users_tokens AS t WHERE t.id_user = '%s';""" % id_user
+            cur.execute(query)
+            self.db.commit()
+        except psycopg2.Error as err:
+            self.db.rollback()
+            raise Exception(err)
 
     # def delete_recover_token(self, id_user):
     #     try:

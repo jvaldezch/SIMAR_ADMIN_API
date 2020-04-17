@@ -51,7 +51,7 @@ class GeoDat:
                 print(str(err), ' could not connect to db')
                 sys.exit()
 
-        def get_total(self, category_id):
+        def get_total(self, category_id, search=None):
             try:                
                 cur = self.db.cursor(cursor_factory=RealDictCursor)
                 query = """SELECT count(*) AS total FROM systems_products AS s WHERE category_id = %s;""" % category_id
@@ -66,7 +66,7 @@ class GeoDat:
                 self.db.rollback()
                 raise Exception(err)
 
-        def get_rows(self, category_id, c_page=1, p_size=10):
+        def get_rows(self, category_id, c_page=1, p_size=10, search=None):
             try:
                 cur = self.db.cursor(cursor_factory=RealDictCursor)
                 query = """SELECT * FROM systems_products AS s WHERE category_id = %s ORDER BY "name" ASC LIMIT %s OFFSET %s;""" % (category_id, p_size, (c_page - 1) * p_size)
@@ -126,17 +126,19 @@ class GeoDat:
                 parser.add_argument('token', type=str)
                 parser.add_argument('currentPage', type=int)
                 parser.add_argument('pageSize', type=int)
+                parser.add_argument('search', type=str)
                 parser.add_argument('categoryId', type=int)
                 args = parser.parse_args()
                 iden = token_decode(args['token'])
                 if iden:
-                    rows = self.model.get_rows(args['categoryId'], c_page=args['currentPage'], p_size=args['pageSize'])
+                    rows = self.model.get_rows(args['categoryId'], c_page=args['currentPage'], p_size=args['pageSize'],
+                                               search=args['search'])
                     return {
                         "success": True,
                         "email": iden['email'],
                         "profile_img": iden['profile_img'],
                         "rows": rows,
-                        "total": self.model.get_total(args['categoryId'])
+                        "total": self.model.get_total(args['categoryId'], search=args['search'])
                     }
                 else:
                     raise Exception("Invalid token")

@@ -59,26 +59,31 @@ class Pages:
             else:
                 return None
 
-        def get_total(self):
+        def get_total(self, search=None):
             try:
                 cur = self.db.cursor(cursor_factory=RealDictCursor)
-                query = """SELECT count(*) AS total FROM systems_pages AS s;"""
+                if not search:
+                    query = """SELECT count(*) AS total FROM systems_pages AS s;"""
+                else:
+                    query = """SELECT count(*) AS total FROM systems_pages AS s WHERE s."name" ILIKE '%{s}%';""".format(s=search)
                 cur.execute(query)
                 row = cur.fetchone()
                 cur.close()
                 if row:
                     return row['total']
                 else:
-                    return None
+                    return 0
             except psycopg2.Error as err:
                 self.db.rollback()
                 raise Exception(err)
 
-        def get_rows(self, c_page=1, p_size=10):
+        def get_rows(self, c_page=1, p_size=10, search=None):
             try:
                 cur = self.db.cursor(cursor_factory=RealDictCursor)
-                query = """SELECT * FROM systems_pages ORDER BY "created_at" DESC LIMIT %s OFFSET %s;""" % (
-                    p_size, (c_page - 1) * p_size)
+                if not search:
+                    query = """SELECT * FROM systems_pages AS p ORDER BY "name" ASC LIMIT {l} OFFSET {o};""".format(l=p_size, o=(c_page - 1) * p_size)
+                else:
+                    query = """SELECT * FROM systems_pages AS p WHERE p."name" ILIKE '%{s}%' ORDER BY p."name" ASC LIMIT {l} OFFSET {o};""".format(l=p_size, o=(c_page - 1) * p_size, s=search)
                 cur.execute(query)
                 rows = cur.fetchall()
                 cur.close()
@@ -143,17 +148,18 @@ class Pages:
                 parser.add_argument('token', type=str)
                 parser.add_argument('currentPage', type=int)
                 parser.add_argument('pageSize', type=int)
+                parser.add_argument('search', type=str)
                 args = parser.parse_args()
                 iden = token_decode(args['token'])
                 if iden:
                     rows = self.model.get_rows(
-                        c_page=args['currentPage'], p_size=args['pageSize'])
+                        c_page=args['currentPage'], p_size=args['pageSize'], search=args['search'])
                     return {
                         "success": True,
                         "email": iden['email'],
                         "profile_img": iden['profile_img'],
                         "rows": rows,
-                        "total": self.model.get_total()
+                        "total": self.model.get_total(search=args['search'])
                     }
                 else:
                     raise Exception("Invalid token")

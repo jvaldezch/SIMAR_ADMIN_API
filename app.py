@@ -6,7 +6,8 @@ import psycopg2
 
 import configparser
 
-from flask import Flask, render_template, flash, redirect, url_for, session, logging, request, jsonify
+from flask import Flask, render_template, flash, redirect, url_for, session, logging, request, \
+    jsonify, send_from_directory
 from flask_cors import CORS
 
 # from wtforms import Form, StringField, TextAreaField, PasswordField, validators
@@ -20,6 +21,7 @@ from flask_jwt_extended import (
     get_jwt_identity, decode_token
 )
 
+from models.home_model import Root, ApiRoot
 from models.auth_model import Login, Logout, Roles, Update, Validate, Recover, RestoreToken, ChangePassword
 
 from models.sistemas_model import Systems
@@ -67,32 +69,23 @@ except Exception as err:
     sys.exit()
 
 
-@app.route('/')
-def render_static():
-    return render_template('index.html')
+@app.route('/favicon.ico')
+def favicon():
+    return send_from_directory(os.path.join(app.root_path, 'static'), 'favicon.ico', mimetype='image/vnd.microsoft.icon')
 
 
-@app.route('/api')
-def render_static_home():
-    return render_template('index.html')
+api.add_resource(Root, '/')
+api.add_resource(ApiRoot, '/api')
 
-
-api.add_resource(Login, '/api/login',
-                 resource_class_kwargs={'db': db})
-api.add_resource(Logout, '/api/logout',
-                 resource_class_kwargs={'db': db})
-api.add_resource(Update, '/api/update',
-                 resource_class_kwargs={'db': db})
-api.add_resource(Validate, '/api/validate',
-                 resource_class_kwargs={'db': db})
-api.add_resource(Roles, '/api/roles',
-                 resource_class_kwargs={'db': db})
+api.add_resource(Login, '/api/login')
+api.add_resource(Logout, '/api/logout')
+api.add_resource(Update, '/api/update')
+api.add_resource(Validate, '/api/validate')
+api.add_resource(Roles, '/api/roles')
 # api.add_resource(Recover, '/api/recover',
-#                  resource_class_kwargs={'db': db, 'frontend_uri': frontend_uri})
-api.add_resource(RestoreToken, '/api/restore-token',
-                 resource_class_kwargs={'db': db})
-api.add_resource(ChangePassword, '/api/change-password',
-                 resource_class_kwargs={'db': db})
+#                  resource_class_kwargs={'frontend_uri': frontend_uri})
+api.add_resource(RestoreToken, '/api/restore-token')
+api.add_resource(ChangePassword, '/api/change-password')
 
 systems = Systems()
 
@@ -160,4 +153,4 @@ api.add_resource(pgs.PGRowSaveMetadata, '/api/guardar-metadata-pagina')
 
 if __name__ == '__main__':
     app.secret_key = secret_key
-    app.run(debug=True, port=l_port)
+    app.run(host='0.0.0.0', debug=True, port=l_port)

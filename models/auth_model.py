@@ -1,8 +1,10 @@
 # -*- coding: utf-8 -*-
+import os
 import datetime
 import urllib.parse
 import psycopg2
 import bcrypt
+import configparser
 
 from psycopg2.extras import RealDictCursor
 from passlib.hash import sha256_crypt
@@ -31,8 +33,19 @@ def token_decode(token):
 
 class AuthModel:
 
-    def __init__(self, db):
-        self.db = db
+    def __init__(self):
+        try:
+            config = configparser.ConfigParser()
+            dirname = os.path.abspath(os.path.dirname(__file__))
+            config_path = os.path.join(dirname, '../.config.ini')
+            config.read(config_path)
+            host = config.get('dbsettings', 'db_host')
+            user = config.get('dbsettings', 'db_user')
+            passwd = config.get('dbsettings', 'db_passwd')
+            dbname = config.get('dbsettings', 'db_dbname')
+            self.db = psycopg2.connect(database=dbname, user=user, password=passwd, host=host)
+        except Exception as err:
+            raise Exception('Could not connect to db ', err)
 
     def challenge_user(self, username):
         try:
@@ -50,7 +63,7 @@ class AuthModel:
             raise Exception(err)
 
     # def update_user_password(self, id_user, n_password):
-    #     try:            
+    #     try:
     #         cur = self.db.connection.cursor()
     #         cur.execute(
     #             "UPDATE users SET `password` = '%s' WHERE id = %s;" % (n_password, id_user))
@@ -157,8 +170,8 @@ class AuthModel:
 
 class Login(Resource):
 
-    def __init__(self, db):
-        self.model = AuthModel(db)
+    def __init__(self):
+        self.model = AuthModel()
 
     def post(self):
         try:
@@ -205,10 +218,11 @@ class Login(Resource):
         except Exception as error:            
             return {"success": False, "message": str(error)}
 
+
 class Roles(Resource):
 
-    def __init__(self, db):
-        self.model = AuthModel(db)
+    def __init__(self):
+        self.model = AuthModel()
 
     def post(self):
         try:
@@ -228,10 +242,11 @@ class Roles(Resource):
         except Exception as error:
             return {"success": False, "message": str(error)}
 
+
 class Logout(Resource):
 
-    def __init__(self, db):
-        self.model = AuthModel(db)
+    def __init__(self):
+        self.model = AuthModel()
 
     def post(self):
         try:
@@ -250,8 +265,8 @@ class Logout(Resource):
 
 class Update(Resource):
 
-    def __init__(self, db):
-        self.model = AuthModel(db)
+    def __init__(self):
+        self.model = AuthModel()
 
     def post(self):
         try:
@@ -263,8 +278,8 @@ class Update(Resource):
 
 class Validate(Resource):
 
-    def __init__(self, db):
-        self.model = AuthModel(db)
+    def __init__(self):
+        self.model = AuthModel()
 
     def post(self):
         try:          
@@ -285,8 +300,8 @@ class Validate(Resource):
 
 class RestoreToken(Resource):
 
-    def __init__(self, db):
-        self.model = AuthModel(db)
+    def __init__(self):
+        self.model = AuthModel()
 
     def post(self):
         try:
@@ -297,7 +312,7 @@ class RestoreToken(Resource):
                 r = self.model.check_recover_token(args['token'])
                 if r:
                     recov = token_decode(args['token'])
-                    if (recov['id_user'] == r['id_user']):
+                    if recov['id_user'] == r['id_user']:
                         return {"success": True}
                     else:
                         raise Exception("Invalid token")
@@ -312,8 +327,8 @@ class RestoreToken(Resource):
 
 class ChangePassword(Resource):
 
-    def __init__(self, db):
-        self.model = AuthModel(db)
+    def __init__(self):
+        self.model = AuthModel()
 
     def post(self):
         try:
@@ -325,7 +340,7 @@ class ChangePassword(Resource):
                 r = self.model.check_recover_token(args['token'])
                 if r:
                     recov = token_decode(args['token'])
-                    if (recov['id_user'] == r['id_user']):
+                    if recov['id_user'] == r['id_user']:
 
                         new_password = sha256_crypt.encrypt(str(args['password']))
 
@@ -349,8 +364,8 @@ class ChangePassword(Resource):
 
 class Recover(Resource):
 
-    def __init__(self, db, frontend_uri):
-        self.model = AuthModel(db)
+    def __init__(self, frontend_uri):
+        self.model = AuthModel()
         self.frontend_uri = frontend_uri
 
     def post(self):

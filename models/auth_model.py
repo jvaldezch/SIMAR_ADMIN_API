@@ -1,5 +1,7 @@
 # -*- coding: utf-8 -*-
 import os
+import random
+import string
 import datetime
 import urllib.parse
 import psycopg2
@@ -18,6 +20,7 @@ from flask_jwt_extended import (
 )
 
 from models.token_model import TokenModel
+from utilities.email_stmp import EmailTools
 
 parser = reqparse.RequestParser()
 
@@ -57,61 +60,106 @@ class AuthModel:
             if row:
                 return row
             else:
-                None
+                return None
         except psycopg2.Error as err:
             self.db.rollback()
             raise Exception(err)
 
-    # def update_user_password(self, id_user, n_password):
-    #     try:
-    #         cur = self.db.connection.cursor()
-    #         cur.execute(
-    #             "UPDATE users SET `password` = '%s' WHERE id = %s;" % (n_password, id_user))
-    #         self.db.connection.commit()
-    #         cur.close()
-    #         return True
-    #     except mysql.connector.Error as err:
-    #         raise Exception(err.message)
+    def update_user_password(self, id_user, n_password):
+        try:
+            cur = self.db.cursor(cursor_factory=RealDictCursor)
+            cur.execute(
+                "UPDATE systems_users SET password = '{p}' WHERE id = {i};".format(p=n_password, i=id_user))
+            self.db.commit()
+            cur.close()
+            return True
+        except psycopg2.Error as err:
+            self.db.rollback()
+            raise Exception(err)
 
-
-    # def challenge_email(self, username):
-    #     try:
-    #         cur = self.db.connection.cursor()
-    #         sql = "SELECT * FROM users WHERE email = '%s';" % username
-    #         results = cur.execute(sql)
-    #         if results > 0:
-    #             row = cur.fetchone()
-    #             return row
-    #         else:
-    #             return None
-    #     except mysql.connector.Error as err:
-    #         raise Exception(err.message)
+    def challenge_email(self, email):
+        try:
+            cur = self.db.cursor(cursor_factory=RealDictCursor)
+            query = "SELECT id FROM systems_users WHERE email = '{e}';".format(e=email)
+            cur.execute(query)
+            row = cur.fetchone()
+            cur.close()
+            if row:
+                return row
+            else:
+                return None
+        except psycopg2.Error as err:
+            self.db.rollback()
+            raise Exception(err)
 
     def add_token(self, id_user, token):
         try:
+            n = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
             cur = self.db.cursor(cursor_factory=RealDictCursor)
-            query = """INSERT INTO systems_users_tokens(id_user, token, process) VALUES (%s, '%s', '%s');""" % (id_user, token, 'login')
+            query = """INSERT INTO systems_users_tokens(id_user, token, process, created_at) VALUES ({i}, '{t}', '{p}', '{d}');""".format(i=id_user, t=token, p='login', d=n)
             cur.execute(query)
-            self.db.commit()            
+            self.db.commit()
+            cur.close()
         except psycopg2.Error as err:
             self.db.rollback()
             raise Exception(err)
 
-    # def add_recover_token(self, id_user, token):
-    #     try:
-    #         cur = self.db.connection.cursor()
-    #         cur.execute(
-    #             "INSERT INTO tokens(id_user, token, `type`) VALUES (%s, %s, %s);", (id_user, token, 'recovery'))
-    #         self.db.connection.commit()
-    #         cur.close()
-    #         return True
-    #     except mysql.connector.Error as err:
-    #         raise Exception(err.message)
+    def add_token_type(self, id_user, token, type):
+        try:
+            n = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            cur = self.db.cursor(cursor_factory=RealDictCursor)
+            query = """INSERT INTO systems_users_tokens(id_user, token, process, created_at) VALUES ({i}, '{t}', '{p}', '{d}');""".format(i=id_user, t=token, p=type, d=n)
+            cur.execute(query)
+            self.db.commit()
+            cur.close()
+            return True
+        except psycopg2.Error as err:
+            self.db.rollback()
+            raise Exception(err)
+
+    def add_recover_token(self, id_user, token):
+        try:
+            n = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            cur = self.db.cursor(cursor_factory=RealDictCursor)
+            query = "INSERT INTO systems_users_tokens(id_user, token, process, created_at) VALUES ({i}, '{t}', '{p}', '{d}');".format(i=id_user, t=token, p='recovery', d=n)
+            cur.execute(query)
+            self.db.commit()
+            cur.close()
+            return True
+        except psycopg2.Error as err:
+            self.db.rollback()
+            raise Exception(err)
+
+    def add_user(self, email, name, last_name, username, password):
+        try:
+            d = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            cur = self.db.cursor(cursor_factory=RealDictCursor)
+            query = "INSERT INTO systems_users(email, name, last_name, created_at, role, username, password, profile_img) VALUES ('{e}', '{n}', '{l}', '{d}', '{r}', '{u}', '{p}', '{m}') RETURNING id;".format(e=email, n=name, l=last_name, d=d, r='user', u=username, p=password, m='/profiles/users/profile-default.jpg')
+            cur.execute(query)
+            self.db.commit()
+            i = cur.fetchone()
+            cur.close()
+            return i['id']
+        except psycopg2.Error as err:
+            self.db.rollback()
+            raise Exception(err)
+
+    def add_user_data(self, id_user, institute):
+        try:
+            cur = self.db.cursor(cursor_factory=RealDictCursor)
+            query = "INSERT INTO systems_users_data(id_user, instituto) VALUES ('{i}', '{n}');".format(i=id_user, n=institute)
+            cur.execute(query)
+            self.db.commit()
+            cur.close()
+            return True
+        except psycopg2.Error as err:
+            self.db.rollback()
+            raise Exception(err)
 
     def delete_token(self, id_user):
         try:
             cur = self.db.cursor(cursor_factory=RealDictCursor)
-            query = """DELETE FROM systems_users_tokens AS t WHERE t.id_user = '%s';""" % id_user
+            query = """DELETE FROM systems_users_tokens AS t WHERE t.id_user = '{i}';""".format(i=id_user)
             cur.execute(query)
             self.db.commit()
         except psycopg2.Error as err:
@@ -128,30 +176,30 @@ class AuthModel:
     #     except mysql.connector.Error as err:
     #         raise Exception(err.message)
 
-    # def check_recover_token(self, token):
-    #     try:
-    #         cur = self.db.connection.cursor()
-    #         sql = "SELECT id, id_user FROM tokens WHERE token = '%s' AND `type`  = 'recovery' AND `updated_at` IS NULL;" % token
-    #         results = cur.execute(sql)
-    #         if results > 0:
-    #             row = cur.fetchone()
-    #             cur.close()
-    #             return row
-    #         else:
-    #             cur.close()
-    #             return None
-    #     except mysql.connector.Error as err:
-    #         raise Exception(err.message)
+    def check_token_type(self, id_user, token, token_type):
+        try:
+            cur = self.db.cursor(cursor_factory=RealDictCursor)
+            query = "SELECT id, id_user FROM systems_users_tokens WHERE id_user = {i} AND token = '{t}' AND process = '{p}';".format(i=id_user, t=token, p=token_type)
+            cur.execute(query)
+            row = cur.fetchone()
+            cur.close()
+            if row:
+                return row
+            return None
+        except psycopg2.Error as err:
+            self.db.rollback()
+            raise Exception(err)
 
-    # def update_token(self, id_token):
-    #     try:
-    #         cur = self.db.connection.cursor()
-    #         cur.execute(
-    #             "UPDATE tokens SET `updated_at` = '%s' WHERE id = %s;" % (datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"), id_token))
-    #         self.db.connection.commit()
-    #         cur.close()
-    #     except mysql.connector.Error as err:
-    #         raise Exception(err.message)
+    def delete_token(self, id_token):
+        try:
+            cur = self.db.cursor(cursor_factory=RealDictCursor)
+            query = "DELETE FROM systems_users_tokens WHERE id = {i};".format(i=id_token)
+            cur.execute(query)
+            self.db.commit()
+            cur.close()
+        except psycopg2.Error as err:
+            self.db.rollback()
+            raise Exception(err)
 
     # def get_user_roles(self, id_user):
     #     try:
@@ -179,16 +227,10 @@ class Login(Resource):
             parser.add_argument('password', type=str)
             args = parser.parse_args()
 
-            # e_password = sha256_crypt.encrypt(str(args['password']))
-            # app.logger.info(e_password)
-
             u = self.model.challenge_user(args['username'])
-            
             if u:                
                 v = bcrypt.checkpw(args['password'].encode(), u['password'].encode())
-                
                 if v:
-                    
                     self.model.delete_token(u['id'])
                     
                     landing = None
@@ -201,7 +243,6 @@ class Login(Resource):
                         'roles': u['role'],
                         'profile_img': u['profile_img'],
                     }
-
                     expires = datetime.timedelta(days=365)
 
                     access_token = create_access_token(
@@ -298,6 +339,32 @@ class Validate(Resource):
             return {"success": False, "message": str(error)}
 
 
+class ValidateToken(Resource):
+
+    def __init__(self):
+        self.model = AuthModel()
+
+    def post(self):
+        try:
+            parser.add_argument('token', type=str)
+            parser.add_argument('type', type=str)
+            args = parser.parse_args()
+            iden = token_decode(args['token'])
+            if 'token' in args:
+                if args['token'] != '':
+                    if iden:
+                        r = self.model.check_token_type(iden['id_user'], args['token'], args['type'])
+                        if r:
+                            return {"success": True}
+                        else:
+                            raise Exception("Token has expired or it is not valid")
+                    else:
+                        raise Exception("Invalid token")
+            raise Exception("No token")
+        except Exception as error:
+            return {"success": False, "message": str(error)}
+
+
 class RestoreToken(Resource):
 
     def __init__(self):
@@ -325,6 +392,88 @@ class RestoreToken(Resource):
             return {"success": False, "message": str(error)}
 
 
+class Register(Resource):
+
+    def __init__(self, base_url):
+        self.model = AuthModel()
+        self.base_url = base_url
+
+    def randon_password(self, size=6, chars=string.ascii_uppercase + string.digits):
+        return ''.join(random.choice(chars) for _ in range(size))
+
+    def post(self):
+        try:
+            parser.add_argument('n_name', type=str)
+            parser.add_argument('n_lastname', type=str)
+            parser.add_argument('n_institute', type=str)
+            parser.add_argument('n_email', type=str)
+            parser.add_argument('n_usrnm', type=str)
+            args = parser.parse_args()
+
+            if args['n_name'] and args['n_lastname'] and args['n_institute'] and args['n_email'] and args['n_usrnm']:
+                u = self.model.challenge_user(args['n_usrnm'])
+                if u:
+                    raise Exception("Nombre de usuario ya registrado.")
+                e = self.model.challenge_email(args['n_email'])
+                if e:
+                    raise Exception("Ya existe un usuario con ese email registrado.")
+
+                if not u and not e:
+
+                    pss = self.randon_password(size=10)
+                    pss_e = bcrypt.hashpw(str(pss).encode('utf-8'), bcrypt.gensalt())
+
+                    id_user = self.model.add_user(args['n_email'], args['n_name'], args['n_lastname'], args['n_usrnm'], pss_e.decode('utf-8'))
+                    if id_user:
+                        self.model.add_user_data(id_user, args['n_institute'])
+
+                        usr_data = {
+                            'id_user': id_user,
+                            'email': args['n_email'],
+                            'timestamp': datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                        }
+
+                        expires = datetime.timedelta(days=2)
+
+                        register_token = create_access_token(identity=usr_data, expires_delta=expires)
+
+                        r = self.model.add_token_type(id_user, register_token, 'register')
+                        if r:
+                            uri = urllib.parse.quote_plus(register_token)
+                            emt = EmailTools()
+                            emt.send_activation_email(args['n_email'], args['n_usrnm'], pss, self.base_url + "activar/" + uri)
+                            emt.send_email()
+                            return {"success": True, "message": "Hemos enviado un mensaje a su correo eletrónico. Complete el registro activando su usario activandolo."}
+                        else:
+                            raise Exception("No se pudo agregar token")
+
+                    raise Exception("No se pudo agregar usuario")
+
+                raise Exception("Unknown exception found")
+
+            return {"success": False}
+
+        except Exception as error:
+            return {"success": False, "message": str(error)}
+
+
+class ActivateUser(Resource):
+
+    def __init__(self):
+        self.model = AuthModel()
+
+    def post(self):
+        try:
+            parser.add_argument('token', type=str)
+            args = parser.parse_args()
+
+            return {"success": False}
+
+        except Exception as error:
+            print(error)
+            return {"success": False, "message": str(error)}
+
+
 class ChangePassword(Resource):
 
     def __init__(self):
@@ -333,20 +482,22 @@ class ChangePassword(Resource):
     def post(self):
         try:
             parser.add_argument('token', type=str)
-            parser.add_argument('password', type=str)
+            parser.add_argument('upwd', type=str)
             args = parser.parse_args()
 
-            if 'token' in args and 'password' in args:
-                r = self.model.check_recover_token(args['token'])
+            iden = token_decode(args['token'])
+
+            if 'token' in args and 'upwd' in args:
+
+                r = self.model.check_token_type(iden['id_user'], args['token'], 'recovery')
                 if r:
                     recov = token_decode(args['token'])
                     if recov['id_user'] == r['id_user']:
+                        new_password = bcrypt.hashpw(str(args['upwd']).encode('utf-8'), bcrypt.gensalt())
 
-                        new_password = sha256_crypt.encrypt(str(args['password']))
-
-                        u = self.model.update_user_password(r['id_user'], new_password)
+                        u = self.model.update_user_password(r['id_user'], new_password.decode('utf-8'))
                         if u:
-                            t = self.model.update_token(r['id'])
+                            self.model.delete_token(r['id'])
                             return {"success": True}
                         else:
                             raise Exception("Unable to update password")
@@ -362,22 +513,22 @@ class ChangePassword(Resource):
             return {"success": False, "message": str(error)}
 
 
-class Recover(Resource):
+class Recovery(Resource):
 
-    def __init__(self, frontend_uri):
+    def __init__(self, base_url):
         self.model = AuthModel()
-        self.frontend_uri = frontend_uri
+        self.base_url = base_url
 
     def post(self):
         try:
 
             parser.add_argument('email', type=str)
+            parser.add_argument('lang', type=str)
             args = parser.parse_args()
 
             if 'email' in args:
                 u = self.model.challenge_email(args['email'])
                 if u:
-
                     usr_data = {
                         'id_user': u['id'],
                         'email': args['email'],
@@ -393,13 +544,18 @@ class Recover(Resource):
                         r = self.model.add_recover_token(
                             u['id'], recover_token)
                         if r:
-                            uri = urllib.parse.quote(recover_token)
+                            uri = urllib.parse.quote_plus(recover_token)
                             emt = EmailTools()
                             emt.send_recovery_email(
-                                args['email'], self.frontend_uri + "/restablecer/" + uri)
+                                args['email'], self.base_url + "restablecer/" + uri)
                             emt.send_email()
 
-                            return {"success": True}
+                            if args['lang'] == 'es':
+                                m = "Hemos enviado un email para restablecer su contraseña."
+                            else:
+                                m = "We have sent an email to reset your password."
+
+                            return {"success": True, "message": m}
 
                         else:
                             raise Exception("Could not add token")

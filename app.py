@@ -22,7 +22,8 @@ from flask_jwt_extended import (
 )
 
 from models.home_model import Root, ApiRoot
-from models.auth_model import Login, Logout, Roles, Update, Validate, Recover, RestoreToken, ChangePassword
+from models.auth_model import Login, Logout, Roles, Update, Validate, Recovery, RestoreToken, \
+    ChangePassword, ValidateToken, Register, ActivateUser
 
 from models.sistemas_model import Systems
 from models.categorias_model import Categories
@@ -59,6 +60,7 @@ try:
     db = psycopg2.connect(database=dbname, user=user, password=passwd, host=host)
 
     base_url = config.get('env', 'base_url')
+    admin_url = config.get('env', 'admin_url')
     vtiles_url = config.get('env', 'vtiles_url')
     vitles_cache = config.get('env', 'vitles_cache')
     download_uri = config.get('env', 'download_uri')
@@ -81,11 +83,15 @@ api.add_resource(Login, '/api/login')
 api.add_resource(Logout, '/api/logout')
 api.add_resource(Update, '/api/update')
 api.add_resource(Validate, '/api/validate')
+api.add_resource(ValidateToken, '/api/validate-token')
 api.add_resource(Roles, '/api/roles')
-# api.add_resource(Recover, '/api/recover',
-#                  resource_class_kwargs={'frontend_uri': frontend_uri})
+api.add_resource(Recovery, '/api/recovery',
+                 resource_class_kwargs={'base_url': base_url})
 api.add_resource(RestoreToken, '/api/restore-token')
 api.add_resource(ChangePassword, '/api/change-password')
+api.add_resource(Register, '/api/register',
+                 resource_class_kwargs={'base_url': base_url})
+api.add_resource(ActivateUser, '/api/activate-user')
 
 systems = Systems()
 

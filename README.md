@@ -49,6 +49,7 @@ pip install mysql-connector
 pip install flask-mysqldb
 pip install psycopg2
 pip install bcrypt
+pip install --upgrade google-api-python-client google-auth-httplib2 google-auth-oauthlib
 ```
 
 ### How to run

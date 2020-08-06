@@ -21,6 +21,7 @@ from flask_jwt_extended import (
 
 from models.token_model import TokenModel
 from utilities.email_stmp import EmailTools
+from utilities.gmail_tools import GmailAPITools
 
 parser = reqparse.RequestParser()
 
@@ -440,9 +441,9 @@ class Register(Resource):
                         r = self.model.add_token_type(id_user, register_token, 'register')
                         if r:
                             uri = urllib.parse.quote_plus(register_token)
-                            emt = EmailTools()
+                            emt = GmailAPITools()
                             emt.send_activation_email(args['n_email'], args['n_usrnm'], pss, self.base_url + "activar/" + uri)
-                            emt.send_email()
+
                             return {"success": True, "message": "Hemos enviado un mensaje a su correo eletrónico. Complete el registro activando su usario activandolo."}
                         else:
                             raise Exception("No se pudo agregar token")
@@ -545,10 +546,11 @@ class Recovery(Resource):
                             u['id'], recover_token)
                         if r:
                             uri = urllib.parse.quote_plus(recover_token)
-                            emt = EmailTools()
+                            rec_url = self.base_url + "restablecer/" + uri
+
+                            emt = GmailAPITools()
                             emt.send_recovery_email(
-                                args['email'], self.base_url + "restablecer/" + uri)
-                            emt.send_email()
+                                args['email'], rec_url)
 
                             if args['lang'] == 'es':
                                 m = "Hemos enviado un email para restablecer su contraseña."

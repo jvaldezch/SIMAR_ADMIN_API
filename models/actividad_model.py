@@ -5,6 +5,7 @@ import datetime
 import urllib.parse
 import psycopg2
 import configparser
+import pytz
 
 from psycopg2.extras import RealDictCursor
 from passlib.hash import sha256_crypt
@@ -18,6 +19,8 @@ from flask_jwt_extended import (
 )
 
 from models.token_model import TokenModel
+
+mctz = pytz.timezone('America/Mexico_City')
 
 parser = reqparse.RequestParser()
 
@@ -54,7 +57,8 @@ class Activity:
                 sys.exit()
 
         def convert_timestamp(self, value):
-            return value.strftime("%Y-%m-%d %H:%M:%S")
+            dt = value.replace(tzinfo=pytz.utc).astimezone(mctz)
+            return dt.strftime("%Y-%m-%d %H:%M:%S")
 
         def get_total(self, search=None):
             try:
@@ -80,12 +84,12 @@ class Activity:
             try:
                 cur = self.db.cursor(cursor_factory=RealDictCursor)
                 if not search:
-                    query = """SELECT l.id, u.username, l.ip, l.activity, l.created_at 
+                    query = """SELECT l.id, u.username, l.ip, l.activity, l.params, l.created_at 
                     FROM systems_users_log AS l 
                     LEFT JOIN systems_users AS u ON u.id = l.user_id 
                     ORDER BY "created_at" DESC LIMIT {l} OFFSET {o};""".format(l=p_size, o=(c_page - 1) * p_size)
                 else:
-                    query = """SELECT l.id, u.username, l.ip, l.activity, l.created_at 
+                    query = """SELECT l.id, u.username, l.ip, l.activity, l.params, l.created_at 
                     FROM systems_users_log AS l 
                     LEFT JOIN systems_users AS u ON u.id = l.user_id 
                     WHERE u."username" ILIKE '%{s}%' 
@@ -101,6 +105,7 @@ class Activity:
                             'username': row['username'],
                             'ip': row['ip'],
                             'activity': row['activity'],
+                            'params': row['params'],
                             'created_at': self.convert_timestamp(row['created_at'])
                         })
                     return arr
@@ -137,4 +142,5 @@ class Activity:
                 else:
                     raise Exception("Invalid token")
             except Exception as error:
+                print(error)
                 return {"success": False, "message": str(error)}

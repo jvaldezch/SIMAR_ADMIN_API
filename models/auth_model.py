@@ -157,16 +157,6 @@ class AuthModel:
             self.db.rollback()
             raise Exception(err)
 
-    def delete_token(self, id_user):
-        try:
-            cur = self.db.cursor(cursor_factory=RealDictCursor)
-            query = """DELETE FROM systems_users_tokens AS t WHERE t.id_user = '{i}';""".format(i=id_user)
-            cur.execute(query)
-            self.db.commit()
-        except psycopg2.Error as err:
-            self.db.rollback()
-            raise Exception(err)
-
     # def delete_recover_token(self, id_user):
     #     try:
     #         cur = self.db.connection.cursor()
@@ -202,6 +192,17 @@ class AuthModel:
             self.db.rollback()
             raise Exception(err)
 
+    def add_log_activity(self, id_user, ip, activity, params):
+        try:
+            cur = self.db.cursor(cursor_factory=RealDictCursor)
+            sql = """INSERT INTO systems_users_log (user_id, ip, activity, params, created_at) VALUES ({u}, '{i}', '{a}', '{p}', CURRENT_TIMESTAMP);""".format(u=id_user, i=ip, a=activity, p=params)
+            cur.execute(sql)
+            self.db.commit()
+            cur.close()
+        except psycopg2.Error as err:
+            self.db.rollback()
+            raise Exception(err)
+
     # def get_user_roles(self, id_user):
     #     try:
     #         cur = self.db.connection.cursor()
@@ -215,6 +216,9 @@ class AuthModel:
     #         return False
     #     except mysql.connector.Error as err:
     #         raise Exception(err.message)
+
+    def __del__(self):
+        self.db.close()
 
 
 class Login(Resource):
@@ -237,6 +241,8 @@ class Login(Resource):
                     landing = None
                     if u['role'] == 'admin':
                         landing = '/admin/dashboard'
+                    else:
+                        landing = 'https://simar.conabio.gob.mx'
 
                     usr_data = {
                         'id_user': u['id'],
@@ -245,6 +251,13 @@ class Login(Resource):
                         'profile_img': u['profile_img'],
                     }
                     expires = datetime.timedelta(days=365)
+
+                    ip = request.remote_addr
+                    id_user = u['id']
+                    activity = "session-ini"
+                    params = args['username']
+
+                    self.model.add_log_activity(id_user, ip, activity, params)
 
                     access_token = create_access_token(
                         identity=usr_data, expires_delta=expires)
@@ -297,6 +310,14 @@ class Logout(Resource):
 
             iden = token_decode(token)
             if iden:
+
+                ip = request.remote_addr
+                id_user = iden['id_user']
+                activity = "session-logout"
+                params = ''
+
+                self.model.add_log_activity(id_user, ip, activity, params)
+
                 self.model.delete_token(iden['id_user'])
 
             return {"success": True}
@@ -327,16 +348,27 @@ class Validate(Resource):
         try:          
             parser.add_argument('token', type=str)
             args = parser.parse_args()
-            iden = token_decode(args['token'])
+
+            token = args['token']
+
+            iden = token_decode(token)
             if iden:
+
+                if iden['roles'] == 'admin':
+                    landing = '/admin/dashboard'
+                else:
+                    landing = 'https://simar.conabio.gob.mx'
+
                 return {
-                    "success": True, 
+                    "success": True,
+                    "landing": landing,
                     "email": iden['email'],
                     "profile_img": iden['profile_img'],
                 }
             else:
                 raise Exception("Invalid token")                
         except Exception as error:
+            print(error)
             return {"success": False, "message": str(error)}
 
 
@@ -438,6 +470,13 @@ class Register(Resource):
 
                         register_token = create_access_token(identity=usr_data, expires_delta=expires)
 
+                        ip = request.remote_addr
+                        id_user = id_user
+                        activity = "session-register"
+                        params = args['n_email']
+
+                        self.model.add_log_activity(id_user, ip, activity, params)
+
                         r = self.model.add_token_type(id_user, register_token, 'register')
                         if r:
                             uri = urllib.parse.quote_plus(register_token)
@@ -498,6 +537,14 @@ class ChangePassword(Resource):
 
                         u = self.model.update_user_password(r['id_user'], new_password.decode('utf-8'))
                         if u:
+
+                            ip = request.remote_addr
+                            id_user = iden['id_user']
+                            activity = "session-password-change"
+                            params = args['token']
+
+                            self.model.add_log_activity(id_user, ip, activity, params)
+
                             self.model.delete_token(r['id'])
                             return {"success": True}
                         else:
@@ -551,6 +598,13 @@ class Recovery(Resource):
                             emt = GmailAPITools()
                             emt.send_recovery_email(
                                 args['email'], rec_url)
+
+                            ip = request.remote_addr
+                            id_user = u['id']
+                            activity = "session-recovery"
+                            params = args['email']
+
+                            self.model.add_log_activity(id_user, ip, activity, params)
 
                             if args['lang'] == 'es':
                                 m = "Hemos enviado un email para restablecer su contraseña."

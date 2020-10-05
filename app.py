@@ -6,19 +6,12 @@ import psycopg2
 
 import configparser
 
-from flask import Flask, render_template, flash, redirect, url_for, session, logging, request, \
-    jsonify, send_from_directory
+from flask import Flask, send_from_directory
 from flask_cors import CORS
-
-# from wtforms import Form, StringField, TextAreaField, PasswordField, validators
-# from passlib.hash import sha256_crypt
-from functools import wraps
-import requests
 
 from flask_restful import Resource, Api, reqparse
 from flask_jwt_extended import (
-    JWTManager, jwt_required, create_access_token,
-    get_jwt_identity, decode_token
+    JWTManager
 )
 
 from models.home_model import Root, ApiRoot
@@ -34,6 +27,7 @@ from models.usuarios_model import Users
 from models.imagenes_model import Images
 from models.actividad_model import Activity
 from models.paginas_model import Pages
+from models.stats_model import Stats
 
 parser = reqparse.RequestParser()
 
@@ -144,6 +138,11 @@ api.add_resource(usrs.URow, '/api/usuario')
 act = Activity()
 
 api.add_resource(act.ARows, '/api/actividades')
+
+stats = Stats()
+
+api.add_resource(stats.Total, '/api/total-procesamientos')
+api.add_resource(stats.TotalDiario, '/api/procesamientos')
 
 imgs = Images()
 
